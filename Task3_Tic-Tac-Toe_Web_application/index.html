@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Epic Tic-Tac-Toe: Squares vs Triangles</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .game-container {
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 120px);
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .cell {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cell:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.05);
+        }
+
+        .cell:active {
+            transform: scale(0.95);
+        }
+
+        .status {
+            margin: 20px 0;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .restart {
+            padding: 12px 30px;
+            font-size: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .restart:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .restart:active {
+            transform: translateY(1px);
+        }
+
+        .symbol {
+            width: 60px;
+            height: 60px;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .symbol.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .win-line {
+            position: absolute;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            z-index: 1;
+            transform-origin: left;
+            animation: winLine 0.5s ease forwards;
+        }
+
+        @keyframes winLine {
+            from {
+                transform: scaleX(0);
+            }
+            to {
+                transform: scaleX(1);
+            }
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin: 20px 0;
+            text-align: center;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            }
+            to {
+                text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas class="particles"></canvas>
+    <h1>Epic Tic-Tac-Toe</h1>
+    <div class="game-container">
+        <div class="status" id="status">Square's turn</div>
+        <div class="board" id="board">
+            <button class="cell" data-index="0"></button>
+            <button class="cell" data-index="1"></button>
+            <button class="cell" data-index="2"></button>
+            <button class="cell" data-index="3"></button>
+            <button class="cell" data-index="4"></button>
+            <button class="cell" data-index="5"></button>
+            <button class="cell" data-index="6"></button>
+            <button class="cell" data-index="7"></button>
+            <button class="cell" data-index="8"></button>
+        </div>
+        <button class="restart" id="restart">New Game</button>
+    </div>
+
+    <script>
+        // Particle background
+        const canvas = document.querySelector('.particles');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 3;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = (Math.random() - 0.5) * 0.5;
+                this.opacity = Math.random() * 0.5;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < 100; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+
+        initParticles();
+        animateParticles();
+
+        const board = document.getElementById('board');
+        const status = document.getElementById('status');
+        const restartButton = document.getElementById('restart');
+        let currentPlayer = 'square';
+        let gameState = Array(9).fill('');
+        let gameActive = true;
+
+        const winningCombinations = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        function createSquare() {
+            return `<svg class="symbol" viewBox="0 0 50 50">
+                <rect x="5" y="5" width="40" height="40" fill="none" stroke="#ff6b6b" stroke-width="4">
+                    <animate attributeName="stroke-dasharray" from="0 160" to="160 160" dur="0.5s" fill="freeze"/>
+                </rect>
+            </svg>`;
+        }
+
+        function createTriangle() {
+            return `<svg class="symbol" viewBox="0 0 50 50">
+                <polygon points="25,5 45,45 5,45" fill="none" stroke="#4ecdc4" stroke-width="4">
+                    <animate attributeName="stroke-dasharray" from="0 160" to="160 160" dur="0.5s" fill="freeze"/>
+                </polygon>
+            </svg>`;
+        }
+
+        function drawWinLine(combination) {
+            const startCell = document.querySelector(`[data-index="${combination[0]}"]`);
+            const endCell = document.querySelector(`[data-index="${combination[2]}"]`);
+            const startRect = startCell.getBoundingClientRect();
+            const endRect = endCell.getBoundingClientRect();
+            const boardRect = board.getBoundingClientRect();
+
+            const line = document.createElement('div');
+            line.className = 'win-line';
+
+            const deltaX = endRect.left - startRect.left;
+            const deltaY = endRect.top - startRect.top;
+            const length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+
+            line.style.width = `${length}px`;
+            line.style.height = '8px';
+            line.style.position = 'absolute';
+            line.style.left = `${startRect.left - boardRect.left + startRect.width / 2}px`;
+            line.style.top = `${startRect.top - boardRect.top + startRect.height / 2}px`;
+            line.style.transform = `rotate(${angle}deg)`;
+            line.style.transformOrigin = 'left';
+
+            board.appendChild(line);
+        }
+
+        function createWinParticles(x, y) {
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'win-particle';
+                    particle.style.left = `${x}px`;
+                    particle.style.top = `${y}px`;
+                    document.body.appendChild(particle);
+
+                    setTimeout(() => particle.remove(), 1000);
+                }, i * 50);
+            }
+        }
+
+        function handleCellClick(e) {
+            const cell = e.target;
+            const index = cell.dataset.index;
+
+            if (gameState[index] !== '' || !gameActive) return;
+
+            gameState[index] = currentPlayer;
+            const symbol = currentPlayer === 'square' ? createSquare() : createTriangle();
+            cell.innerHTML = symbol;
+
+            setTimeout(() => {
+                cell.querySelector('.symbol').classList.add('show');
+            }, 50);
+
+            if (checkWin()) {
+                const winner = currentPlayer === 'square' ? 'Square' : 'Triangle';
+                status.textContent = `${winner} wins!`;
+                status.style.background = currentPlayer === 'square' ?
+                    'linear-gradient(45deg, #ff6b6b, #ff8e8e)' :
+                    'linear-gradient(45deg, #4ecdc4, #6ee7df)';
+                gameActive = false;
+
+                const winningCombo = winningCombinations.find(combination =>
+                    combination.every(index => gameState[index] === currentPlayer)
+                );
+
+                if (winningCombo) {
+                    setTimeout(() => drawWinLine(winningCombo), 100);
+                }
+                return;
+            }
+
+            if (gameState.every(cell => cell !== '')) {
+                status.textContent = "It's a draw!";
+                status.style.background = 'linear-gradient(45deg, #ff6b6b, #4ecdc4)';
+                gameActive = false;
+                return;
+            }
+
+            currentPlayer = currentPlayer === 'square' ? 'triangle' : 'square';
+            status.textContent = `${currentPlayer === 'square' ? 'Square' : 'Triangle'}'s turn`;
+        }
+
+        function checkWin() {
+            return winningCombinations.some(combination => {
+                return combination.every(index => {
+                    return gameState[index] === currentPlayer;
+                });
+            });
+        }
+
+        function restartGame() {
+            gameState = Array(9).fill('');
+            gameActive = true;
+            currentPlayer = 'square';
+            status.textContent = "Square's turn";
+            status.style.background = 'linear-gradient(45deg, #ff6b6b, #4ecdc4)';
+
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.innerHTML = '';
+            });
+
+            const winLine = document.querySelector('.win-line');
+            if (winLine) winLine.remove();
+
+            restartButton.classList.add('pulse');
+            setTimeout(() => restartButton.classList.remove('pulse'), 500);
+        }
+
+        board.addEventListener('click', handleCellClick);
+        restartButton.addEventListener('click', restartGame);
+    </script>
+</body>
+</html>
